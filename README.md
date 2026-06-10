@@ -44,5 +44,5 @@ offer     : КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ...
 ### 3. Тестовый запрос (PowerShell)
 
 ```powershell
-$r = Invoke-RestMethod -Uri "https://ваш-домен.amvera.io/webhook-test/order-request" -Method POST -ContentType "application/json" -Body '{"client": "OOO Romashka", "contact": "info@romashka.ru", "message": "Nuzhno 10 noutbukov ASUS ROG i 5 myshek Logitech"}'
+$r = Invoke-RestMethod -Uri "https://ваш-домен.amvera.io/webhook-test/order-request" -Method POST -ContentType "application/json" -Body '{"client": "OOO Romashka", "contact": "info@romashka.ru", "message": "Nuzhno 10 noutbukov"}'
 $r | Format-List
