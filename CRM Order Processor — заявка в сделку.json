@@ -1,0 +1,295 @@
+{
+  "name": "CRM Order Processor — заявка в сделку",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1328,
+        0
+      ],
+      "id": "be048354-669e-4995-8e98-96ce4667b316",
+      "name": "Webhook",
+      "webhookId": "11ce248e-da68-4200-a215-dbfbebf044b1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "gpt-3.5-turbo"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -992,
+        176
+      ],
+      "id": "18da5405-979d-47ce-b274-7d0dfd9798b3",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "5MWroi0FEEfhoRlN",
+          "name": "OpenAiTunel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=client: {{$json.client}}\ncontact: {{$json.contact}}\nmessage: {{$json.message}}\n\nВерни JSON в формате:\n{\n  \"client\": \"...\",\n  \"contact\": \"...\",\n  \"message\": \"...\",\n  \"intent\": \"...\",\n  \"confidence\": 0.95\n}\nclient: {{$json.client}}\nmessage: {{$json.message}}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Ты классификатор заявок. Верни JSON, который содержит: - исходные поля client, contact, message - поле intent (new_order / question / complaint / other) - поле confidence (число от 0 до 1)  Не добавляй никакой другой текст, только JSON."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -992,
+        0
+      ],
+      "id": "20b29fd5-d9f3-4a09-b322-d6142a7584ab",
+      "name": "Intent Router"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ddc3eb8e-07bb-40e8-a0e1-fddc0d5e9b98",
+              "leftValue": "={{$json.intent}}",
+              "rightValue": "new_order",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -480,
+        0
+      ],
+      "id": "3a2e5573-7f91-41e6-93a7-e560e9b65a0a",
+      "name": "Проверка типа заявки"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  {\n    \"success\": $json.success,\n    \"message\": $json.message,\n    \"client\": $json.client,\n    \"offer\": $json.offer\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        64,
+        -128
+      ],
+      "id": "a939ab52-a2d6-49bd-97ae-1b6232187c2e",
+      "name": "Ответ клиенту"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем данные из body запроса\nconst body = $input.first().json.body || $input.first().json;\n\n// Извлекаем поля (даже если они повреждены, пробуем восстановить)\nconst client = body.client || body.client_utf8 || \"Не указан\";\nconst contact = body.contact || \"Не указан\";\nconst message = body.message || body.message_text || \"Нет сообщения\";\n\n// Логируем для отладки\nconsole.log(\"=== ВОССТАНОВЛЕННЫЕ ДАННЫЕ ===\");\nconsole.log(\"client:\", client);\nconsole.log(\"contact:\", contact);\nconsole.log(\"message:\", message);\n\n// Возвращаем чистые данные\nreturn {\n  client: client,\n  contact: contact,\n  message: message,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        1296
+      ],
+      "id": "beb0c56d-daa0-4371-b565-d528fd9a003e",
+      "name": "приём заявки",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const client = $json.client || 'Не указан';\nconst offer = $json.offer || 'Нет предложения';\n\nreturn {\n  success: true,\n  message: 'Заявка обработана',\n  client: client,\n  offer: offer\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -128
+      ],
+      "id": "1fc01733-eef6-41b9-bc1c-9a5b049a9e48",
+      "name": "Подготовка финального ответа"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nreturn {\n  client: body.client,\n  contact: body.contact,\n  message: body.message\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        0
+      ],
+      "id": "25df3c4b-f8d0-44e7-937f-046edbab3e54",
+      "name": "Передача client"
+    },
+    {
+      "parameters": {
+        "jsCode": "const client = $json.client;\nconst message = $json.message;\n\nconst offer = `КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ\n\nКлиент: ${client}\nЗапрос: ${message}\n\nБлагодарим за обращение! Менеджер свяжется с вами.\n\nИтого: по запросу`;\n\nreturn {\n  client: client,\n  offer: offer,\n  message: message\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        -128
+      ],
+      "id": "74ae2f42-629f-4c6e-99bb-71acfcd575c9",
+      "name": "Генерация КП"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Извлекаем данные из поля text (это строка JSON)\nconst textData = $json.text;\n\nlet client = '';\nlet contact = '';\nlet message = '';\nlet intent = '';\nlet confidence = 0;\n\ntry {\n  const parsed = JSON.parse(textData);\n  client = parsed.client;\n  contact = parsed.contact;\n  message = parsed.message;\n  intent = parsed.intent;\n  confidence = parsed.confidence;\n} catch(e) {\n  console.log('Ошибка парсинга:', e);\n}\n\n// Возвращаем плоскую структуру\nreturn {\n  client: client,\n  contact: contact,\n  message: message,\n  intent: intent,\n  confidence: confidence\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        0
+      ],
+      "id": "afc5141e-806e-4519-8735-0cc0f32d8b8b",
+      "name": "Извлечение intent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Intent Router",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Передача client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Извлечение intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка типа заявки": {
+      "main": [
+        [
+          {
+            "node": "Генерация КП",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "приём заявки": {
+      "main": [
+        []
+      ]
+    },
+    "Подготовка финального ответа": {
+      "main": [
+        [
+          {
+            "node": "Ответ клиенту",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Передача client": {
+      "main": [
+        [
+          {
+            "node": "Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Генерация КП": {
+      "main": [
+        [
+          {
+            "node": "Подготовка финального ответа",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Извлечение intent": {
+      "main": [
+        [
+          {
+            "node": "Проверка типа заявки",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d68d777c-3278-42ea-a701-77a0e76c51b7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5145ab924151884e2e9aaaf11db5ed4cc1a6cefad55ef510178d8a102ebe24b"
+  },
+  "id": "bVA0kX2WdjtWW2lQ",
+  "tags": []
+}
