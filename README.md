@@ -42,4 +42,8 @@ client    : OOO Romashka
 offer     : КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ...
 
 ### 3. Тестовый запрос (PowerShell)
+
+Скопируйте и выполните команду:
+
+```powershell
 $r = Invoke-RestMethod -Uri "https://n-wformatagent-evgenylubitel.amvera.io/webhook-test/order-request" -Method POST -ContentType "application/json" -Body '{"client": "OOO Romashka", "contact": "info@romashka.ru", "message": "Nuzhno 10 noutbukov"}'; $r | Format-List
